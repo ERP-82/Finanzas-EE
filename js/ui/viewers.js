@@ -99,6 +99,8 @@ export function showInvoiceViewer(invoiceId, state) {
 </div>`;
     elements.invoiceViewerModal.classList.remove('hidden');
     elements.invoiceViewerModal.classList.add('flex');
+    // Guardar el id actual en el modal para uso en descargas/export
+    try { elements.invoiceViewerModal.dataset.invoiceId = invoiceId; } catch (e) { /* noop */ }
 }
 
 export function hideInvoiceViewer() {
@@ -148,33 +150,74 @@ export function printInvoice() {
 
 export function downloadInvoiceAsPDF() {
     const { jsPDF } = window.jspdf;
-    const invoiceElement = document.getElementById('invoice-printable-area');
-    if (!invoiceElement) return;
-    
-    const titleElement = elements.invoiceViewerModal.querySelector('h1');
-    const isReceipt = titleElement && titleElement.textContent.toLowerCase() === 'recibo';
-    
-    // Encontrar el número de documento
-    let docNumberText = 'documento';
-    const strongElements = invoiceElement.querySelectorAll('strong');
-    // Asumir que el primer <strong> después de "Nº de factura:" o "Nº de recibo:" es el número
-    if (strongElements.length > 0) docNumberText = strongElements[0].textContent; 
+    if (!jsPDF) return;
 
-    const docType = isReceipt ? 'Recibo' : 'Factura';
+    // Obtener la factura desde el estado usando el id guardado en el modal
+    const invoiceId = elements.invoiceViewerModal?.dataset?.invoiceId;
+    const invoice = invoiceId ? getState().documents.find(d => d.id === invoiceId) : null;
+    if (!invoice) return;
+
+    const safeNumber = String(invoice.number || invoiceId).replace(/[^a-z0-9]/gi, '_');
     const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
-    
-    // --- SOLUCIÓN ÓPTIMA: Usar doc.html() que genera PDF vectorial (mucho más ligero) ---
-    // Esta es la forma correcta de usar jsPDF con HTML: genera PDF vectorial en lugar de imágenes
-    doc.html(invoiceElement, {
-        callback: (generatedDoc) => { 
-            generatedDoc.save(`${docType}-${docNumberText.replace(/[^a-z0-9]/gi, '_')}.pdf`);
-        },
-        margin: [10, 10, 10, 10],
-        autoPaging: 'text',
-        x: 0,
-        y: 0,
-        width: 190, // A4 width in mm minus margins
-        windowWidth: 800
+
+    // Encabezado
+    doc.setFontSize(18);
+    doc.setFont(undefined, 'bold');
+    doc.text('Europa Envíos', 14, 20);
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.text('LAMAQUINALOGISTICA, SOCIEDAD LIMITADA', 14, 26);
+    doc.text('CALLE ESTEBAN SALAZAR CHAPELA, NUM 20, PUERTA 87, NAVE 87', 14, 31);
+    doc.text('29004 MÁLAGA (ESPAÑA)   NIF: B56340656', 14, 36);
+
+    // Metadatos de la factura (alineado a la derecha)
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'bold');
+    doc.text('FACTURA', 200, 20, { align: 'right' });
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.text(`Nº: ${invoice.number || ''}`, 200, 28, { align: 'right' });
+    doc.text(`Fecha: ${invoice.date || ''}`, 200, 34, { align: 'right' });
+
+    // Cliente
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.text('Facturar a:', 14, 52);
+    doc.setFont(undefined, 'normal');
+    doc.text(invoice.client || '', 14, 58);
+    const addrLines = (invoice.address || '').split('\n');
+    let ay = 64;
+    addrLines.forEach(line => { if (line) { doc.text(line, 14, ay); ay += 5; } });
+    if (invoice.nif) { doc.text(`NIF/RUC: ${invoice.nif}`, 14, ay); ay += 6; }
+
+    // Tabla de ítems usando autoTable (vectorial y ligera)
+    const rows = (invoice.items || []).map(it => [
+        it.description || '',
+        (typeof it.quantity === 'number') ? it.quantity.toString() : String(it.quantity || ''),
+        formatCurrency(it.price || 0, invoice.currency),
+        formatCurrency((it.quantity || 0) * (it.price || 0), invoice.currency)
+    ]);
+
+    doc.autoTable({
+        startY: ay + 6,
+        head: [['Descripción', 'Cantidad', 'Precio Unit.', 'Total']],
+        body: rows,
+        styles: { fontSize: 10 },
+        headStyles: { fillColor: [55, 65, 81], textColor: 255 },
+        theme: 'striped',
+        margin: { left: 14, right: 14 }
     });
+
+    // Totales
+    const finalY = doc.previousAutoTable ? (doc.previousAutoTable.finalY + 8) : (ay + 6 + (rows.length * 8));
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'normal');
+    const rightX = 200;
+    doc.text(`Subtotal: ${formatCurrency(invoice.subtotal || 0, invoice.currency)}`, rightX, finalY, { align: 'right' });
+    doc.text(`IVA (${((invoice.ivaRate || 0) * 100).toFixed(0)}%): ${formatCurrency(invoice.iva || 0, invoice.currency)}`, rightX, finalY + 6, { align: 'right' });
+    doc.setFont(undefined, 'bold');
+    doc.text(`TOTAL: ${formatCurrency(invoice.total || 0, invoice.currency)}`, rightX, finalY + 16, { align: 'right' });
+
+    doc.save(`Factura-${safeNumber}.pdf`);
 }
 

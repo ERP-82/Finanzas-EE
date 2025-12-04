@@ -144,6 +144,71 @@ function handleDocumentsTableClick(e) {
 
             form.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
+        // Editar Factura
+        if (doc && doc.type === 'Factura') {
+            const form = elements.nuevaFacturaForm;
+            if (!form) return;
+
+            // Rellenar campos principales
+            form.querySelector('#factura-id').value = doc.id;
+            form.querySelector('#factura-fecha').value = doc.date;
+            form.querySelector('#factura-numero').value = doc.number;
+            form.querySelector('#factura-cliente').value = doc.client || '';
+            form.querySelector('#factura-nif').value = doc.nif || '';
+            form.querySelector('#factura-cliente-direccion').value = doc.address || '';
+            form.querySelector('#factura-cliente-telefono').value = doc.phone || '';
+            const currencyEl = form.querySelector('#factura-currency');
+            if (currencyEl) currencyEl.value = doc.currency || 'EUR';
+            const opTypeEl = form.querySelector('#factura-operation-type');
+            if (opTypeEl && doc.operationType) {
+                // Si existe la opción, selecciónala; si no, añade temporalmente
+                let opt = Array.from(opTypeEl.options).find(o => o.value === doc.operationType);
+                if (!opt) {
+                    opt = document.createElement('option');
+                    opt.value = doc.operationType;
+                    opt.text = doc.operationType;
+                    opTypeEl.appendChild(opt);
+                }
+                opTypeEl.value = doc.operationType;
+            }
+
+            // Limpiar items y volver a crearlos desde doc.items
+            const itemsContainer = elements.facturaItemsContainer;
+            if (itemsContainer) {
+                itemsContainer.innerHTML = '';
+                (doc.items || []).forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'grid grid-cols-12 gap-2 items-center factura-item';
+                    itemDiv.innerHTML = `
+                        <div class="col-span-6"><input type="text" class="form-input item-description" placeholder="Descripción" required value="${escapeHTML(item.description)}"></div>
+                        <div class="col-span-2"><input type="text" inputmode="decimal" value="${item.quantity}" class="form-input item-quantity text-right" required></div>
+                        <div class="col-span-3"><input type="text" inputmode="decimal" placeholder="0.00" class="form-input item-price text-right" required value="${item.price}"></div>
+                        <div class="col-span-1 flex justify-center"><button type="button" class="remove-item-btn p-2 text-red-400 hover:text-red-300"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`;
+                    itemsContainer.appendChild(itemDiv);
+                    // recreate icons for new nodes
+                    const newIcon = itemDiv.querySelector('i[data-lucide]');
+                    if (newIcon && typeof lucide !== 'undefined') lucide.createIcons({ nodes: [newIcon] });
+                    // add listeners
+                    itemDiv.querySelector('.item-quantity').addEventListener('input', updateInvoiceTotals);
+                    itemDiv.querySelector('.item-price').addEventListener('input', updateInvoiceTotals);
+                });
+            }
+
+            // Actualizar UI: mostrar botón cancelar y cambiar texto del submit
+            const cancelBtn = document.getElementById('factura-cancel-btn');
+            if (cancelBtn) cancelBtn.classList.remove('hidden');
+            const submitBtn = document.getElementById('generate-invoice-btn');
+            if (submitBtn) submitBtn.textContent = '';
+            if (submitBtn) {
+                // reconstruir contenido con icon + texto
+                submitBtn.innerHTML = '<i data-lucide="file-output" class="w-4 h-4"></i> Actualizar Factura';
+                if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+            }
+
+            // Recalcular totales
+            updateInvoiceTotals();
+            form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
     }
     // --- FIN DE MODIFICACIÓN ---
 
@@ -277,6 +342,9 @@ function handleGenerateInvoice(e) {
     e.preventDefault();
     const form = e.target;
 
+    // Si existe un id en el formulario, estamos editando
+    const invoiceId = form.querySelector('#factura-id')?.value;
+
     const items = [];
     let parsingError = false;
     form.querySelectorAll('.factura-item').forEach(itemEl => {
@@ -335,22 +403,55 @@ function handleGenerateInvoice(e) {
     };
 
     withSpinner(() => {
-        actions.addDocument(newInvoice);
+        if (invoiceId) {
+            // Mantener el estado previo si existe
+            const existing = getState().documents?.find(d => d.id === invoiceId) || {};
+            newInvoice.status = existing.status || newInvoice.status;
+            actions.updateDocument(invoiceId, newInvoice);
+            showAlertModal('Éxito', `La factura Nº ${escapeHTML(newInvoice.number)} ha sido actualizada.`);
+        } else {
+            actions.addDocument(newInvoice);
+            showAlertModal('Éxito', `La factura Nº ${escapeHTML(newInvoice.number)} ha sido creada.`);
+        }
 
+        // Reset del formulario para ambos casos
         form.reset();
-        // Restore default date
         const dateInput = form.querySelector('#factura-fecha');
         if (dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
         elements.facturaItemsContainer.innerHTML = '';
-        // Add one empty item line back
         const addItemButton = document.getElementById('factura-add-item-btn');
         if (addItemButton) addItemButton.click();
-        // Update totals display
         updateInvoiceTotals();
 
-        showAlertModal('Éxito', `La factura Nº ${escapeHTML(newInvoice.number)} ha sido creada.`);
+        // Ocultar botón cancelar y restaurar texto del submit
+        const cancelBtn = document.getElementById('factura-cancel-btn');
+        if (cancelBtn) cancelBtn.classList.add('hidden');
+        const submitBtn = document.getElementById('generate-invoice-btn');
+        if (submitBtn) submitBtn.innerHTML = '<i data-lucide="file-output" class="w-4 h-4"></i> Generar Factura';
+        if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+
         switchPage('facturacion', 'listado');
     })();
+}
+
+// --- Reset del formulario de factura ---
+function resetInvoiceForm() {
+    const form = elements.nuevaFacturaForm;
+    if (!form) return;
+    form.reset();
+    const idInput = form.querySelector('#factura-id');
+    if (idInput) idInput.value = '';
+    const dateInput = form.querySelector('#factura-fecha');
+    if (dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
+    elements.facturaItemsContainer.innerHTML = '';
+    const addItemButton = document.getElementById('factura-add-item-btn');
+    if (addItemButton) addItemButton.click();
+    updateInvoiceTotals();
+    const cancelBtn = document.getElementById('factura-cancel-btn');
+    if (cancelBtn) cancelBtn.classList.add('hidden');
+    const submitBtn = document.getElementById('generate-invoice-btn');
+    if (submitBtn) submitBtn.innerHTML = '<i data-lucide="file-output" class="w-4 h-4"></i> Generar Factura';
+    if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
 }
 
 
@@ -599,6 +700,9 @@ export function bindDocumentEvents() {
     if (elements.closeInvoiceViewerBtn) elements.closeInvoiceViewerBtn.addEventListener('click', handleCloseInvoiceViewer);
     if (elements.printInvoiceBtn) elements.printInvoiceBtn.addEventListener('click', handlePrintInvoice);
     if (elements.pdfInvoiceBtn) elements.pdfInvoiceBtn.addEventListener('click', handleDownloadPDF);
+    // Cancelar edición de factura
+    const facturaCancelBtn = document.getElementById('factura-cancel-btn');
+    if (facturaCancelBtn) facturaCancelBtn.addEventListener('click', resetInvoiceForm);
     // --- FIN DE LISTENERS AÑADIDOS ---
 }
 

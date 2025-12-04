@@ -814,6 +814,7 @@
                             <div class="card p-6 rounded-xl">
                                 <h3 class="font-semibold mb-4 text-lg">Nueva Factura</h3>
                                 <form id="nueva-factura-form" class="space-y-4">
+                                    <input type="hidden" id="factura-id">
                                     <div>
                                         <label for="factura-operation-type" class="block text-sm text-gray-400 mb-1">Tipo de Operación</label>
                                         <select id="factura-operation-type" class="form-input">
@@ -873,6 +874,7 @@
                                         </button>
                                     </div>
                                     <div class="pt-4 flex justify-end">
+                                        <button type="button" id="factura-cancel-btn" class="mr-2 hidden bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg transition-colors">Cancelar</button>
                                         <button type="submit" id="generate-invoice-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2">
                                             <i data-lucide="file-output" class="w-4 h-4"></i> Generar Factura
                                         </button>

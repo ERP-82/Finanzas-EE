@@ -212,7 +212,7 @@ function handleDocumentsTableClick(e) {
             // Recalcular totales
             updateInvoiceTotals();
             form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            console.log('Formulario de factura rellenado para edición:', invoiceId);
+            console.log('Formulario de factura rellenado para edición:', id);
         }
     }
     // --- FIN DE MODIFICACIÓN ---
@@ -678,21 +678,34 @@ export function bindDocumentEvents() {
     if (facturaFecha) facturaFecha.addEventListener('change', populateNextInvoiceNumber);
     
     // Tabla de listado de facturas
+    // *** PARCHE ROBUSTO: Re-asignar listener sin clonar para mantener referencias intactas ***
     if (elements.facturasTableBody) {
-        // Limpiar listeners antiguos clonando
-        const newTbody = elements.facturasTableBody.cloneNode(false);
-        elements.facturasTableBody.parentNode.replaceChild(newTbody, elements.facturasTableBody);
-        elements.facturasTableBody = newTbody;
+        // Opción 1: Reasignar listener directamente sin clonar
+        // (El clone causaba pérdida de referencias en Firefox y otros navegadores)
         elements.facturasTableBody.addEventListener('click', handleDocumentsTableClick);
         console.log('bindDocumentEvents: listener attached to facturasTableBody');
     }
 
+    // *** FALLBACK GLOBAL PERMANENTE ***
+    // Captura clicks en botones de edición incluso si el listener local falla
+    // Esto actúa como un safety net que asegura que todos los clicks Edit se procesen
+    if (!window.__editButtonFallbackAttached) {
+        document.addEventListener('click', function globalEditFallback(e) {
+            const editBtn = e.target.closest('.edit-doc-btn');
+            if (editBtn) {
+                console.log('[FALLBACK EDIT LISTENER] Click en botón edit detectado, id=', editBtn.dataset.id);
+                // Delegar al handler principal
+                handleDocumentsTableClick.call(editBtn.closest('tbody'), { target: editBtn });
+            }
+        }, true); // Usar capture phase para máxima prioridad
+        window.__editButtonFallbackAttached = true;
+        console.log('bindDocumentEvents: fallback edit listener attached (global)');
+    }
+
     const facturasSearch = document.getElementById('facturas-search');
     if (facturasSearch) {
-        // Limpiar listener antiguo
-        const newSearch = facturasSearch.cloneNode(true);
-        facturasSearch.parentNode.replaceChild(newSearch, facturasSearch);
-        newSearch.addEventListener('input', () => renderAll());
+        // SIN clonar: asignar listener directamente
+        facturasSearch.addEventListener('input', () => renderAll());
     }
     
     // Configuración AEAT

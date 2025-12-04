@@ -153,8 +153,19 @@ function handleDocumentsTableClick(e) {
             const form = elements.nuevaFacturaForm;
             if (!form) return;
 
-            // Rellenar campos principales
+            // *** PASO 1: ESTABLECER EL ID PRIMERO ***
+            // Esto es crítico: el ID debe estar establecido ANTES de cambiar de página,
+            // para que la función populateNextInvoiceNumber (que se ejecuta al cambiar de página)
+            // detecte que estamos en modo edición y no sobrescriba el número.
             form.querySelector('#factura-id').value = doc.id;
+
+            // *** PASO 2: CAMBIAR A LA PÁGINA DE FACTURACIÓN CREAR ***
+            // Ahora que el ID está establecido, cambiar de página. La función
+            // populateNextInvoiceNumber NO sobrescribirá el número porque detectará el ID.
+            switchPage('facturacion', 'crear');
+
+            // *** PASO 3: RELLENAR TODOS LOS CAMPOS DESPUÉS DE CAMBIAR DE PÁGINA ***
+            // Ahora que estamos en la página correcta, rellenamos el resto de campos.
             form.querySelector('#factura-fecha').value = doc.date;
             form.querySelector('#factura-numero').value = doc.number;
             form.querySelector('#factura-cliente').value = doc.client || '';

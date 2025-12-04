@@ -12,32 +12,35 @@ import { escapeHTML, getCurrencySymbol } from '../utils.js';
  * Lógica: NNNN. El NNNN es consecutivo y no se reinicia con el año.
  */
 export function populateNextInvoiceNumber() {
+    // --- CORRECCIÓN: Protección para modo edición ---
+    // Si el campo oculto 'factura-id' tiene valor, significa que estamos editando.
+    // En ese caso, NO debemos sobrescribir el número con el contador automático.
+    const idInput = document.getElementById('factura-id');
+    if (idInput && idInput.value) {
+        return; 
+    }
+    // ------------------------------------------------
+
     const { settings } = getState();
     const dateInput = document.getElementById('factura-fecha');
     const numberInput = document.getElementById('factura-numero');
     
     if (!dateInput || !numberInput || !settings || !settings.invoiceCounter) {
         console.warn("No se puede popular el número de factura, falta config o elementos.");
-        // --- CORRECCIÓN 3: Quitar el prefijo del año ---
         if(numberInput) numberInput.value = "1"; // Fallback
         return;
     }
 
     const docDate = new Date(dateInput.value + 'T00:00:00Z'); // Usar UTC
     if (isNaN(docDate.getTime())) {
-         // --- CORRECCIÓN 3: Quitar el prefijo del año ---
          if(numberInput) numberInput.value = "ERROR"; // Fallback
         return;
     }
     
-    // --- CORRECCIÓN 3: 'currentYear' ya no se usa para el número ---
-    // const currentYear = docDate.getUTCFullYear();
-
     // Ignorar 'lastInvoiceYear', usar siempre el siguiente número consecutivo
     const { nextInvoiceNumber } = settings.invoiceCounter;
     const numberToUse = nextInvoiceNumber || 1; // Usar el siguiente
 
-    // --- CORRECCIÓN 3: Quitar el prefijo del año ---
     numberInput.value = String(numberToUse);
 }
 // --- FIN DE FUNCIÓN MOVIDA ---
@@ -243,6 +246,4 @@ export {
     updateTransferFormUI,
     resetTransactionForm,
     toggleIvaField
-    // populateNextInvoiceNumber NO ES NECESARIO AQUÍ porque ya se exportó con "export function"
 };
-

@@ -84,7 +84,9 @@ function createDocumentRow(doc, state) {
     }
 
     // --- INICIO DE MODIFICACIÓN: Añadir botón de Editar ---
-    const canEdit = (type === 'Factura' && permissions.manage_invoices) || (type === 'Proforma' && permissions.manage_proformas);
+    // DEBUG: permitir mostrar el botón de editar siempre para facilitar pruebas
+    const FORCE_SHOW_EDIT_BUTTON = true; // <--- desactivar en producción si es necesario
+    const canEdit = FORCE_SHOW_EDIT_BUTTON || (type === 'Factura' && permissions.manage_invoices) || (type === 'Proforma' && permissions.manage_proformas);
     if (canEdit) {
          actionsHtml.push(`
             <button class="edit-doc-btn p-2 text-blue-400 hover:text-blue-300" data-id="${id}" title="Editar">

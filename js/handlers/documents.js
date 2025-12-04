@@ -106,6 +106,7 @@ function handleDocumentSubmit(e, type) {
 
 
 function handleDocumentsTableClick(e) {
+    console.log('handleDocumentsTableClick: click recibido', e.target);
     const statusBtn = e.target.closest('.status-btn');
     const deleteBtn = e.target.closest('.delete-doc-btn');
     const viewBtn = e.target.closest('.view-invoice-btn');
@@ -115,9 +116,11 @@ function handleDocumentsTableClick(e) {
     const editBtn = e.target.closest('.edit-doc-btn');
 
     if (editBtn) {
+        console.log('Edit button pulsado, id=', id);
         const id = editBtn.dataset.id;
         const { documents } = getState();
         const doc = documents.find(d => d.id === id);
+        console.log('Documento buscado en estado:', doc);
 
         // Solo actuar si encontramos el documento y es una Proforma
         if (doc && doc.type === 'Proforma') { 
@@ -146,6 +149,7 @@ function handleDocumentsTableClick(e) {
         }
         // Editar Factura
         if (doc && doc.type === 'Factura') {
+            console.log('Entrando en modo edición para factura', id);
             const form = elements.nuevaFacturaForm;
             if (!form) return;
 
@@ -208,6 +212,7 @@ function handleDocumentsTableClick(e) {
             // Recalcular totales
             updateInvoiceTotals();
             form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            console.log('Formulario de factura rellenado para edición:', invoiceId);
         }
     }
     // --- FIN DE MODIFICACIÓN ---
@@ -679,6 +684,7 @@ export function bindDocumentEvents() {
         elements.facturasTableBody.parentNode.replaceChild(newTbody, elements.facturasTableBody);
         elements.facturasTableBody = newTbody;
         elements.facturasTableBody.addEventListener('click', handleDocumentsTableClick);
+        console.log('bindDocumentEvents: listener attached to facturasTableBody');
     }
 
     const facturasSearch = document.getElementById('facturas-search');

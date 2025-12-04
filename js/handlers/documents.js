@@ -116,8 +116,8 @@ function handleDocumentsTableClick(e) {
     const editBtn = e.target.closest('.edit-doc-btn');
 
     if (editBtn) {
-        console.log('Edit button pulsado, id=', id);
         const id = editBtn.dataset.id;
+        console.log('Edit button pulsado, id=', id);
         const { documents } = getState();
         const doc = documents.find(d => d.id === id);
         console.log('Documento buscado en estado:', doc);
@@ -694,8 +694,9 @@ export function bindDocumentEvents() {
             const editBtn = e.target.closest('.edit-doc-btn');
             if (editBtn) {
                 console.log('[FALLBACK EDIT LISTENER] Click en botón edit detectado, id=', editBtn.dataset.id);
-                // Delegar al handler principal
-                handleDocumentsTableClick.call(editBtn.closest('tbody'), { target: editBtn });
+                // Llamar directamente al handler con un evento sintetizado
+                const syntheticEvent = { target: editBtn };
+                handleDocumentsTableClick(syntheticEvent);
             }
         }, true); // Usar capture phase para máxima prioridad
         window.__editButtonFallbackAttached = true;

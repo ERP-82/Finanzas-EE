@@ -15,7 +15,7 @@ import { withSpinner } from './handlers/helpers.js';
 // --- MODIFICADO: Importamos 'handleLogout' ---
 import { bindAuthEvents, bindUserManagementEvents, handleLogout } from './handlers/auth.js';
 import { bindCashflowEvents } from './handlers/cashflow.js';
-import { bindDocumentEvents } from './handlers/documents.js';
+import { bindDocumentEvents, handleDocumentsTableClick } from './handlers/documents.js';
 import { bindClientEvents } from './handlers/clients.js';
 import { bindInvestmentEvents } from './handlers/investments.js';
 import { bindReportEvents } from './handlers/reports.js';
@@ -44,6 +44,11 @@ export function bindEventListeners() {
     bindInvestmentEvents();     // (Fase 4)
     bindReportEvents();         // (Fase 5)
     bindSettingsEvents();       // (Fase 5)
+
+    // *** PARCHE: Exponer handleDocumentsTableClick globalmente ***
+    window.handleDocumentsTableClick = handleDocumentsTableClick;
+    console.log('[HANDLERS] handleDocumentsTableClick expuesto globalmente en window');
+
 
     // --- Eventos Globales y Restantes ---
 

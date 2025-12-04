@@ -244,5 +244,12 @@ export function renderDocuments(type, tbody, searchInputId) {
             .map(doc => createDocumentRow(doc, state))
             .join('');
     }
+
+    // *** PARCHE CRÍTICO: Vincular listeners AQUÍ en el renderer ***
+    // Esto asegura que los listeners se adjunten cada vez que se renderiza la tabla
+    if (typeof window !== 'undefined' && window.handleDocumentsTableClick) {
+        tbody.addEventListener('click', window.handleDocumentsTableClick);
+        console.log(`[RENDERER] Listener adjuntado a ${type} tbody`);
+    }
 }
 

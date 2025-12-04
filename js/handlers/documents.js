@@ -724,5 +724,9 @@ export function bindDocumentEvents() {
     const facturaCancelBtn = document.getElementById('factura-cancel-btn');
     if (facturaCancelBtn) facturaCancelBtn.addEventListener('click', resetInvoiceForm);
     // --- FIN DE LISTENERS AÑADIDOS ---
-}
+
+    }
+
+    // *** EXPORTAR handleDocumentsTableClick para uso global ***
+    export { handleDocumentsTableClick };
 

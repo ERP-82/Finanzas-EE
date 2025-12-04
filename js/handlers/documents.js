@@ -728,5 +728,24 @@ export function bindDocumentEvents() {
     }
 
     // *** EXPORTAR handleDocumentsTableClick para uso global ***
+    // Además, adjuntar un fallback global al cargar el módulo para asegurarnos
+    // de capturar clicks en botones de editar incluso si bindDocumentEvents
+    // no se ejecutó (por ejemplo, por error de inicialización).
+    if (!window.__globalEditFallbackAttached) {
+        document.addEventListener('click', function globalEditFallbackOnLoad(e) {
+            try {
+                const editBtn = e.target && e.target.closest && e.target.closest('.edit-doc-btn');
+                if (editBtn) {
+                    console.log('[GLOBAL MODULE FALLBACK] Edit click detected, id=', editBtn.dataset.id);
+                    // Llamar al handler pasando un evento sintetizado
+                    handleDocumentsTableClick({ target: editBtn });
+                }
+            } catch (err) {
+                console.error('[GLOBAL MODULE FALLBACK] Error handling edit click:', err);
+            }
+        }, true);
+        window.__globalEditFallbackAttached = true;
+    }
+
     export { handleDocumentsTableClick };
 

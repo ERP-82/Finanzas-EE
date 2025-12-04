@@ -161,30 +161,20 @@ export function downloadInvoiceAsPDF() {
     if (strongElements.length > 0) docNumberText = strongElements[0].textContent; 
 
     const docType = isReceipt ? 'Recibo' : 'Factura';
-    const doc = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
+    const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
     
-    // --- CORRECCIÓN: Usar html2canvas explícitamente (más robusto) ---
-    html2canvas(invoiceElement, {
-        scale: 2, // Mejorar resolución
-        useCORS: true
-    }).then(canvas => {
-        const imgData = canvas.toDataURL('image/png');
-        const pdfWidth = doc.internal.pageSize.getWidth();
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-        
-        doc.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-        doc.save(`${docType}-${docNumberText.replace(/[^a-z0-9]/gi, '_')}.pdf`);
-    }).catch(err => {
-        console.error("Error al generar el PDF con html2canvas:", err);
-        // Aquí podríamos mostrar un showAlertModal si lo importamos
-    });
-
-    /*
-    // --- CÓDIGO ANTIGUO (Reemplazado por el de arriba) ---
+    // --- SOLUCIÓN ÓPTIMA: Usar doc.html() que genera PDF vectorial (mucho más ligero) ---
+    // Esta es la forma correcta de usar jsPDF con HTML: genera PDF vectorial en lugar de imágenes
     doc.html(invoiceElement, {
-        callback: (doc) => { doc.save(`${docType}-${docNumberText.replace(/[^a-z0-9]/gi, '_')}.pdf`); },
-        margin: [40,0,40,0], autoPaging: 'text', x:0, y:0, width:595, windowWidth:700
+        callback: (generatedDoc) => { 
+            generatedDoc.save(`${docType}-${docNumberText.replace(/[^a-z0-9]/gi, '_')}.pdf`);
+        },
+        margin: [10, 10, 10, 10],
+        autoPaging: 'text',
+        x: 0,
+        y: 0,
+        width: 190, // A4 width in mm minus margins
+        windowWidth: 800
     });
-    */
 }
 
